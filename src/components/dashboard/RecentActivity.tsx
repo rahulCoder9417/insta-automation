@@ -1,5 +1,7 @@
 import { MessageCircle, MessageSquare, Heart, UserPlus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
+import { useStore } from '@/utils/zustand/zustand';
 
 interface Activity {
   id: string;
@@ -10,14 +12,17 @@ interface Activity {
   time: string;
 }
 
-const activities: Activity[] = [
-  { id: '1', type: 'dm_received', user: 'sarah.design', avatar: 'S', content: 'Hey! I saw your latest post...', time: '2m' },
-  { id: '2', type: 'dm_sent', user: 'mike_photo', avatar: 'M', content: 'Thanks for reaching out! Here\'s more info...', time: '5m' },
-  { id: '3', type: 'comment', user: 'travel.lover', avatar: 'T', content: 'Love this! Where was this taken?', time: '12m' },
-  { id: '4', type: 'follow', user: 'creative.studio', avatar: 'C', content: 'Started following you', time: '18m' },
-  { id: '5', type: 'dm_received', user: 'brand.collab', avatar: 'B', content: 'Would love to collaborate...', time: '25m' },
-  { id: '6', type: 'like', user: 'art.daily', avatar: 'A', content: 'Liked your latest reel', time: '30m' },
-];
+function relativeTime(from: Date): string {
+  const diffMs = Date.now() - new Date(from).getTime();
+  const sec = Math.max(1, Math.floor(diffMs / 1000));
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
 
 const typeConfig = {
   dm_received: { icon: MessageCircle, color: 'text-primary', bg: 'bg-primary/10' },
@@ -28,6 +33,65 @@ const typeConfig = {
 };
 
 export function RecentActivity() {
+  const dms = useStore((s) => s.dms);
+  const comments = useStore((s) => s.comments);
+  const newFollowers = useStore((s) => s.newFollowers);
+
+  const activities = useMemo<Activity[]>(() => {
+    const list: Activity[] = [];
+
+    // Map DMs (no direction available in type; treat as received for now)
+    list.push(
+      ...dms.map((dm, idx) => ({
+        id: `dm-${idx}-${dm.name}`,
+        type: 'dm_received' as const,
+        user: dm.name,
+        avatar: (dm.name?.[0] || 'U').toUpperCase(),
+        content: dm.latestMessage,
+        time: relativeTime(dm.latestMessageAt),
+      }))
+    );
+
+    // Map Comments
+    list.push(
+      ...comments.map((cmt, idx) => ({
+        id: `cmt-${idx}-${cmt.name}`,
+        type: 'comment' as const,
+        user: cmt.name,
+        avatar: (cmt.name?.[0] || 'U').toUpperCase(),
+        content: cmt.title,
+        time: relativeTime(cmt.time),
+      }))
+    );
+
+    // Map New Followers
+    list.push(
+      ...newFollowers.map((f, idx) => ({
+        id: `follow-${idx}-${f.name}`,
+        type: 'follow' as const,
+        user: f.name,
+        avatar: (f.name?.[0] || 'U').toUpperCase(),
+        content: 'Started following you',
+        time: relativeTime(f.time),
+      }))
+    );
+
+    // Sort by most recent using inferred timestamps from time fields
+    // Convert time strings back to ordering by embedding timestamps alongside then removing
+    return list.sort((a, b) => {
+      // Not having raw dates anymore; approximate by comparing suffix units priority
+      const parse = (t: string) => {
+        const n = parseInt(t);
+        if (t.endsWith('s')) return n;
+        if (t.endsWith('m')) return n * 60;
+        if (t.endsWith('h')) return n * 3600;
+        if (t.endsWith('d')) return n * 86400;
+        return Number.MAX_SAFE_INTEGER;
+      };
+      return parse(a.time) - parse(b.time);
+    });
+  }, [dms, comments, newFollowers]);
+
   return (
     <div className="stat-card">
       <div className="flex items-center justify-between mb-6">
@@ -52,7 +116,7 @@ export function RecentActivity() {
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Avatar */}
-              <div className="relative flex-shrink-0">
+              <div className="relative shrink-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold text-sm">
                   {activity.avatar}
                 </div>

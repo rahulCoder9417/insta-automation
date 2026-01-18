@@ -13,6 +13,8 @@ import { DMAutomationForm } from '@/components/automation/DMAutomationForm';
 import { CommentAutomationForm } from '@/components/automation/CommentAutomationForm';
 import { ChatbotForm } from '@/components/automation/ChatbotForm';
 import { SchedulePostForm } from '@/components/automation/SchedulePostForm';
+import { useStore } from '@/utils/zustand/zustand';
+import { useLoadDummyData } from '@/hooks/useLoadDummyData';
 
 const Index = () => {
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -20,6 +22,18 @@ const Index = () => {
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [chatbotFormOpen, setChatbotFormOpen] = useState(false);
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
+
+  // Seed demo data (dev only)
+  useLoadDummyData();
+
+  // Select metrics from store
+  const totalFollowers = useStore((s) => s.totalFollowers);
+  const messagesSent = useStore((s) => s.messagesSent);
+  const engagementRate = useStore((s) => s.engagementRate);
+  const profileViews = useStore((s) => s.profileViews);
+
+  const formatNumber = (n: number | null | undefined) =>
+    (n ?? 0).toLocaleString();
 
   const handleSelectType = (type: string) => {
     setSelectorOpen(false);
@@ -62,32 +76,32 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="Total Followers"
-              value="24,567"
-              change={12.5}
+              value={formatNumber(totalFollowers?.total)}
+              change={totalFollowers?.percentageChange ?? 0}
               changeLabel="vs last month"
               icon={Users}
               delay={0}
             />
             <StatCard
               title="Messages Sent"
-              value="1,234"
-              change={8.2}
+              value={formatNumber(messagesSent?.total)}
+              change={messagesSent?.percentageChange ?? 0}
               changeLabel="vs last week"
               icon={MessageCircle}
               delay={100}
             />
             <StatCard
               title="Engagement Rate"
-              value="4.8%"
-              change={-2.1}
+              value={`${engagementRate?.rate ?? 0}%`}
+              change={engagementRate?.percentageChange ?? 0}
               changeLabel="vs last week"
               icon={TrendingUp}
               delay={200}
             />
             <StatCard
               title="Profile Views"
-              value="8,942"
-              change={15.7}
+              value={formatNumber(profileViews?.views)}
+              change={profileViews?.percentageChange ?? 0}
               changeLabel="vs last month"
               icon={Eye}
               delay={300}

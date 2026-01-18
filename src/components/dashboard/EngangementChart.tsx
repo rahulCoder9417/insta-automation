@@ -1,16 +1,37 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMemo } from 'react';
+import { useStore } from '@/utils/zustand/zustand';
+import { useLoadDummyData } from '@/hooks/useLoadDummyData';
 
-const data = [
-  { name: 'Mon', messages: 120, comments: 85, engagement: 205 },
-  { name: 'Tue', messages: 180, comments: 120, engagement: 300 },
-  { name: 'Wed', messages: 150, comments: 95, engagement: 245 },
-  { name: 'Thu', messages: 220, comments: 150, engagement: 370 },
-  { name: 'Fri', messages: 280, comments: 180, engagement: 460 },
-  { name: 'Sat', messages: 320, comments: 220, engagement: 540 },
-  { name: 'Sun', messages: 250, comments: 170, engagement: 420 },
-];
+const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 export function EngagementChart() {
+  useLoadDummyData();
+
+  const dms = useStore((s) => s.dms);
+  const comments = useStore((s) => s.comments);
+
+  const data = useMemo(() => {
+    const counts = new Array(7).fill(0).map(() => ({ messages: 0, comments: 0 }));
+
+    dms.forEach((dm) => {
+      const d = new Date(dm.latestMessageAt);
+      const idx = d.getDay();
+      counts[idx].messages += 1;
+    });
+    comments.forEach((cmt) => {
+      const d = new Date(cmt.time);
+      const idx = d.getDay();
+      counts[idx].comments += 1;
+    });
+
+    // Rebuild in Mon..Sun order like original UI, but include all weekdays
+    const order = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const byName = weekdayNames.map((n, i) => ({ name: n, ...counts[i] }));
+    const ordered = order.map((n) => byName.find((x) => x.name === n)!)
+      .map((x) => ({ ...x, engagement: x.messages + x.comments }));
+    return ordered;
+  }, [dms, comments]);
   return (
     <div className="stat-card h-80">
       <div className="flex items-center justify-between mb-6">

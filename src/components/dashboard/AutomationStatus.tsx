@@ -1,5 +1,7 @@
 import { Bot, MessageCircle, MessageSquare, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useStore } from '@/utils/zustand/zustand';
+import { useLoadDummyData } from '@/hooks/useLoadDummyData';
 
 interface AutomationItem {
   id: string;
@@ -9,13 +11,6 @@ interface AutomationItem {
   triggered: number;
   lastTriggered: string;
 }
-
-const automations: AutomationItem[] = [
-  { id: '1', name: 'Welcome DM Flow', type: 'dm', status: 'active', triggered: 234, lastTriggered: '2 min ago' },
-  { id: '2', name: 'Product Info Bot', type: 'chatbot', status: 'active', triggered: 156, lastTriggered: '5 min ago' },
-  { id: '3', name: 'Comment Auto-Reply', type: 'comment', status: 'active', triggered: 89, lastTriggered: '12 min ago' },
-  { id: '4', name: 'Lead Capture Flow', type: 'dm', status: 'paused', triggered: 45, lastTriggered: '1 hour ago' },
-];
 
 const typeIcons = {
   dm: MessageCircle,
@@ -30,6 +25,62 @@ const statusColors = {
 };
 
 export function AutomationStatus() {
+  useLoadDummyData();
+
+  const activeAutomation = useStore((s) => s.activeAutomation);
+  const dms = useStore((s) => s.dms);
+  const comments = useStore((s) => s.comments);
+
+  const relativeTime = (date: Date | null | undefined) => {
+    if (!date) return 'N/A';
+    const diff = Date.now() - new Date(date).getTime();
+    const sec = Math.max(1, Math.floor(diff / 1000));
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} min ago`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  };
+
+  const latestDM = dms.reduce<Date | null>((acc, dm) => {
+    const t = new Date(dm.latestMessageAt);
+    return !acc || t > acc ? t : acc;
+  }, null);
+  const latestComment = comments.reduce<Date | null>((acc, c) => {
+    const t = new Date(c.time);
+    return !acc || t > acc ? t : acc;
+  }, null);
+
+  const automations: AutomationItem[] = [
+    {
+      id: '1',
+      name: 'Welcome DM Flow',
+      type: 'dm',
+      status: 'active',
+      triggered: activeAutomation?.dm_flow ?? 0,
+      lastTriggered: relativeTime(latestDM),
+    },
+    {
+      id: '2',
+      name: 'Product Info Bot',
+      type: 'chatbot',
+      status: 'active',
+      triggered: activeAutomation?.product_info_bot ?? 0,
+      lastTriggered: relativeTime(latestDM),
+    },
+    {
+      id: '3',
+      name: 'Comment Auto-Reply',
+      type: 'comment',
+      status: 'active',
+      triggered: activeAutomation?.comment_auto_reply ?? 0,
+      lastTriggered: relativeTime(latestComment),
+    },
+  ];
+
+  const totalActive = automations.filter(a => a.status === 'active').length;
   return (
     <div className="stat-card">
       <div className="flex items-center justify-between mb-6">
@@ -39,7 +90,7 @@ export function AutomationStatus() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-lg">
           <Zap className="w-4 h-4 text-success" />
-          <span className="text-xs font-semibold text-success">3 Active</span>
+          <span className="text-xs font-semibold text-success">{totalActive} Active</span>
         </div>
       </div>
       

@@ -1,4 +1,6 @@
 import { Calendar, Image, Film, Clock, MoreVertical } from 'lucide-react';
+import { useStore } from '@/utils/zustand/zustand';
+import { useLoadDummyData } from '@/hooks/useLoadDummyData';
 
 interface ScheduledPost {
   id: string;
@@ -8,12 +10,6 @@ interface ScheduledPost {
   thumbnail: string;
 }
 
-const posts: ScheduledPost[] = [
-  { id: '1', type: 'image', caption: 'New product launch coming soon! 🚀 Stay tuned...', scheduledFor: 'Today, 2:00 PM', thumbnail: 'gradient-1' },
-  { id: '2', type: 'reel', caption: 'Behind the scenes of our latest shoot 🎬', scheduledFor: 'Tomorrow, 10:00 AM', thumbnail: 'gradient-2' },
-  { id: '3', type: 'image', caption: 'Monday motivation to start your week right ✨', scheduledFor: 'Mon, 9:00 AM', thumbnail: 'gradient-3' },
-];
-
 const gradients: Record<string, string> = {
   'gradient-1': 'from-primary via-accent to-primary',
   'gradient-2': 'from-accent via-success to-accent',
@@ -21,6 +17,38 @@ const gradients: Record<string, string> = {
 };
 
 export function ScheduledPosts() {
+  useLoadDummyData();
+
+  const scheduled = useStore((s) => s.scheduledPosts);
+
+  const formatTime = (date: Date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const isSameDay = d.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const isTomorrow = d.toDateString() === tomorrow.toDateString();
+
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hr12 = hours % 12 === 0 ? 12 : hours % 12;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const timeStr = `${hr12}:${pad(minutes)} ${ampm}`;
+
+    if (isSameDay) return `Today, ${timeStr}`;
+    if (isTomorrow) return `Tomorrow, ${timeStr}`;
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return `${days[d.getDay()]}, ${timeStr}`;
+  };
+
+  const posts: ScheduledPost[] = scheduled.map((p, idx) => ({
+    id: String(idx + 1),
+    type: 'image',
+    caption: p.title,
+    scheduledFor: formatTime(p.time),
+    thumbnail: p.photo,
+  }));
   return (
     <div className="stat-card">
       <div className="flex items-center justify-between mb-6">
@@ -42,7 +70,7 @@ export function ScheduledPosts() {
             style={{ animationDelay: `${index * 100}ms` }}
           >
             {/* Thumbnail */}
-            <div className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gradient-to-br ${gradients[post.thumbnail]} animate-gradient`}>
+            <div className={`relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-linear-to-br ${gradients[post.thumbnail]} animate-gradient`}>
               <div className="absolute inset-0 flex items-center justify-center bg-background/20">
                 {post.type === 'image' ? (
                   <Image className="w-6 h-6 text-foreground/80" />

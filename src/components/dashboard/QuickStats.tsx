@@ -1,4 +1,6 @@
 import { ArrowUpRight, MessageCircle, MessageSquare, Users, Heart } from 'lucide-react';
+import { useStore } from '@/utils/zustand/zustand';
+import { useLoadDummyData } from '@/hooks/useLoadDummyData';
 
 interface QuickStat {
   label: string;
@@ -7,14 +9,21 @@ interface QuickStat {
   color: string;
 }
 
-const stats: QuickStat[] = [
-  { label: 'DMs Today', value: '47', icon: MessageCircle, color: 'text-primary' },
-  { label: 'Comments', value: '128', icon: MessageSquare, color: 'text-accent' },
-  { label: 'New Followers', value: '24', icon: Users, color: 'text-success' },
-  { label: 'Engagement', value: '4.2%', icon: Heart, color: 'text-warning' },
-];
-
 export function QuickStats() {
+  useLoadDummyData();
+
+  const messagesSent = useStore((s) => s.messagesSent);
+  const dms = useStore((s) => s.dms);
+  const comments = useStore((s) => s.comments);
+  const newFollowers = useStore((s) => s.newFollowers);
+  const engagementRate = useStore((s) => s.engagementRate);
+
+  const stats: QuickStat[] = [
+    { label: 'DMs Today', value: String(messagesSent?.total ?? dms.length ?? 0), icon: MessageCircle, color: 'text-primary' },
+    { label: 'Comments', value: String(comments.length ?? 0), icon: MessageSquare, color: 'text-accent' },
+    { label: 'New Followers', value: String(newFollowers.length ?? 0), icon: Users, color: 'text-success' },
+    { label: 'Engagement', value: `${engagementRate?.rate ?? 0}%`, icon: Heart, color: 'text-warning' },
+  ];
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, index) => {
